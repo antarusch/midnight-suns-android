@@ -45,13 +45,36 @@ This is an independent adaptation. Original copyrights, licenses and attribution
 
 ## What was implemented for Midnight Suns
 
-- Adapted the Android launcher, game preparation and existing FEX/PS4 compatibility runtime to **CUSA26174 APP_VER 01.00**, with touchscreen controls and game-specific launch handling.
-- Corrected **Onion memory mapping metadata** and replaced the fixed-size live mapping tracker with a growing tracker, removing a demonstrated metadata-capacity failure while preserving physical allocation bookkeeping.
-- Added rendering compatibility workarounds, including conservative image-format / compute-clear handling and the optional **skylighting-off engine path** used to address the green lighting contamination.
-- Added a separately toggleable **synchronous small-buffer copy** control using the existing runtime optimization-mask mechanism. This is not a global GPU wait or a replacement renderer.
-- Added an atomic, signature-checked **128 to 256 MiB framebuffer arena** patch: backing allocation/mapping, accounting, buddy tracking and three address classifiers are updated together. The extra 128 MiB comes from the existing guest memory budget; total guest memory is not increased.
+Midnight Suns is a late PS4 **Unreal Engine 4** release. Adapting the inherited runtime required more than changing the launcher or adding graphics switches: the game's startup and gameplay exercised PS4 kernel, memory-pool, filesystem and NP Toolkit interfaces that needed additional compatibility work. The items below describe the game-specific additions and corrections, not a claim that the entire PS4 SDK or online stack is implemented.
+
+### PS4 services and engine startup
+
+- **Kernel, threads and synchronization:** extended the inherited guest-thread support with current-thread ID queries, POSIX read/write-lock compatibility, and thread-exit / C++ destructor handling. CPU-mode queries use the game's SFO attributes, while the Neo/PS4 Pro query reports the runtime's base-PS4 profile rather than confusing the phone's CPU count with the emulated console mode.
+- **Filesystem and content access:** corrected directory enumeration to the compact PS4/FreeBSD directory-entry layout actually consumed by this executable, preserving real directory contents and iteration. Added DiscMap sysmodule/query compatibility for the extracted-file game layout.
+- **Asynchronous-I/O startup:** implemented parameter initialization and validation/acceptance of the game's low-, medium- and high-priority AIO configuration. This is initialization compatibility; it should not be read as a claim that every PS4 AIO submission API was newly implemented.
+- **Game-provided NP Toolkit2:** adjusted import resolution so the game's own linked toolkit code, constructors and state can execute, instead of replacing toolkit startup with a fabricated successful initialization.
+- **Toolkit service dependencies:** added the required NetCtl and UserService callback registration/check/unregistration aliases, plus NP Manager state-callback/check and account-ID compatibility. Registrations retain ownership/state and support cleanup; offline callback checks do not manufacture connection events or PSN authentication.
+- **Offline service behavior:** account queries report signed-out status and VoiceQoS initialization reports an unavailable voice backend after argument validation. These paths let the game handle an offline runtime; **online PSN services and voice chat are not implemented**.
+- **Supporting initialization/query interfaces:** added the required coredump-handler registration, heap-trace information, lifecycle and sanitizer-query compatibility used during engine startup. Handler registration is not a claim of a complete PS4 crash-dump implementation.
+- Adapted the Android launcher, executable preparation and existing FEX/PS4 compatibility runtime to **CUSA26174 APP_VER 01.00**, with touchscreen controls and game-specific launch handling.
+
+### Memory management and allocation stability
+
+- **Real memory-pool backing:** implemented/extended pool expansion, virtual reservation and commit through the inherited direct-memory and guest virtual-memory backends, using the game's 64 KiB pool granularity. Successful commits require actual backing and mappings, rather than merely returning success to the engine.
+- **Pool decommit and reuse:** corrected decommit/release bookkeeping and reuse of freed backing, with split/coalescing and ownership handling for fragmented allocations. Direct-memory free-range tracking and available-memory queries were needed so the engine could make allocation decisions against the runtime's real state.
+- **Flexible-memory accounting:** supplied the available-flexible-memory query from the runtime's live usage counter rather than a fixed pretend amount.
+- **Onion/Garlic metadata:** corrected virtual mapping metadata for Onion allocations while retaining the actual backing ownership. This addressed a mismatch between the memory type requested by the game and the type exposed through guest mapping queries.
+- **Growing allocation tracker:** replaced the fixed-size live mapping metadata tracker with a growing tracker after allocation churn exhausted its record capacity. This preserves physical-allocation bookkeeping and removes a demonstrated metadata-limit failure; it is separate from running out of the phone's physical RAM.
+- **Dedicated framebuffer arena:** added the optional, atomic, signature-checked **128 to 256 MiB** expansion. Backing allocation/mapping, accounting, buddy tracking and three address classifiers are updated together, including correct recognition and cleanup of allocations in the expanded range. This targets the observed framebuffer allocation failures. The additional 128 MiB comes from the **existing guest direct-memory budget**, so total guest memory is not increased and other allocations have correspondingly less headroom.
+
+### Rendering, controls and packaging
+
+- Added the optional **skylighting-off engine path** used to address the green lighting contamination, alongside the inherited shadPS4-derived Vulkan renderer and retained game-specific rendering compatibility work.
+- Added a separately toggleable **synchronous small-buffer copy** control using the existing runtime optimization-mask mechanism. It changes when small read-only host copies occur; it is not a global GPU wait or a replacement renderer.
 - Kept the experimental shadow, eye-adaptation and SSAO switches independent and reversible. They are **not enabled in the recommended configuration**.
 - Rebranded the launcher with Midnight Suns artwork, text, icon references and export filenames. Alpha106 retains **the exact Alpha105 runtime payload and all six patch definitions**; its changes are launcher branding/version text only.
+
+The working lighting/flicker configuration still requires **FSR/upscaling OFF, Native resolution, 16x anisotropic filtering**, and the three named patches listed above. Memory-service support, the framebuffer patch and the rendering workarounds solve different parts of getting this title running; they should not be treated as one universal UE4 fix.
 
 Signature, archive integrity, package/version and native-library alignment checks passed. The release APK is the exact promoted master, not a rebuild. No added rendering capture or shader-dump diagnostics are enabled; ordinary runtime logs remain.
 
