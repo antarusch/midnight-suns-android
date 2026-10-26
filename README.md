@@ -84,6 +84,8 @@ Developed with **AI assistance (ChatGPT/Codex)**, with human-directed developmen
 
 Test device: **REDMAGIC 10S Pro, Android 16, Snapdragon 8 Elite Leading Version, Adreno 830, 24 GB RAM**, using **Rutabaga 26.10.10**. Results on other devices or drivers are unverified.
 
+**Driver recommendation: for better results, use the latest Rutabaga Turnip Vulkan driver compatible with your device.** The version used for the reported testing was Rutabaga 26.10.10; newer driver versions have not been individually validated here.
+
 Install over an existing Midnight Suns build without uninstalling or clearing app data to retain saves, settings and game-folder selection. Keep the graphics settings and three required patches above. Supply your own legally obtained supported game dump. No game executable or installable game dump is included.
 
 ### APK SHA-256
